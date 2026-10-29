@@ -1,0 +1,379 @@
+shared:INFO: (Emscripten: Running sanity checks)
+emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.13 (e13ee988ce3d87a738dd8f3661d02223308c412a)
+In file included from ./tests/sim_host.h:133,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/drum_core.c: In function ‘route_mask’:
+./tests/../firmware/src/drum_core.c:261:9: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  261 |         if(!next||next>NTRK)break;source=next-1;
+      |         ^~
+./tests/../firmware/src/drum_core.c:261:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  261 |         if(!next||next>NTRK)break;source=next-1;
+      |                                   ^~~~~~
+In file included from ./tests/../firmware/src/fx.c:6,
+                 from ./tests/sim_host.h:135,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/mm_busfx.h: In function ‘mmb_reverb_block’:
+./tests/../firmware/src/mm_busfx.h:190:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  190 |  if(!verb || !s->buffer)return; verb=verb>127?127:verb; damping=damping>127?127:damping;
+      |  ^~
+./tests/../firmware/src/mm_busfx.h:190:33: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  190 |  if(!verb || !s->buffer)return; verb=verb>127?127:verb; damping=damping>127?127:damping;
+      |                                 ^~~~
+./tests/../firmware/src/mm_busfx.h: In function ‘mmb_tape_block’:
+./tests/../firmware/src/mm_busfx.h:228:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  228 |  if(!amount || !s->buffer)return; amount=amount>127?127:amount;
+      |  ^~
+./tests/../firmware/src/mm_busfx.h:228:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  228 |  if(!amount || !s->buffer)return; amount=amount>127?127:amount;
+      |                                   ^~~~~~
+./tests/../firmware/src/mm_busfx.h: In function ‘mmb_crunch_block’:
+./tests/../firmware/src/mm_busfx.h:255:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  255 |  if(!amount)return; amount=amount>127?127:amount;
+      |  ^~
+./tests/../firmware/src/mm_busfx.h:255:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  255 |  if(!amount)return; amount=amount>127?127:amount;
+      |                     ^~~~~~
+In file included from ./tests/../firmware/src/arp.c:19,
+                 from ./tests/sim_host.h:140,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/mm_arp_modes.h: In function ‘mma_arp_next’:
+./tests/../firmware/src/mm_arp_modes.h:57:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   57 |  if(!count)return 0;if(count>8)count=8;if(range<1)range=1;if(range>4)range=4;
+      |  ^~
+./tests/../firmware/src/mm_arp_modes.h:57:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   57 |  if(!count)return 0;if(count>8)count=8;if(range<1)range=1;if(range>4)range=4;
+      |                     ^~
+In file included from ./tests/../firmware/src/ui.c:557,
+                 from ./tests/sim_host.h:145,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/demo_song.h: At top level:
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+......
+   24 |   {0}
+      |    {}
+./tests/../firmware/src/demo_song.h:10:48: warning: missing braces around initializer [-Wmissing-braces]
+   10 | static const step_t DEMO_STEPS[2][NTRK][NSTEP]={
+      |                                                ^
+......
+   17 |   {0}
+      |    {}
+......
+   24 |   {0}
+      |    {}
+In file included from ./tests/sim_host.h:146,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/ui_draw.c: In function ‘graph_signature’:
+./tests/../firmware/src/ui_draw.c:1767:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+ 1767 |     if (pg->graph == GR_STEPS || pg->graph == GR_GRID)
+      |     ^~
+./tests/../firmware/src/ui_draw.c:1769:9: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+ 1769 |         h ^= (held_step() + 1u) * 977u;
+      |         ^
+In file included from ./tests/../firmware/src/mm_library.h:11,
+                 from ./tests/../firmware/src/mm_storage_ui.h:6,
+                 from ./tests/../firmware/src/project.c:806,
+                 from ./tests/sim_host.h:185,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/mm_records.h: In function ‘mmr_pattern_capture’:
+./tests/../firmware/src/mm_records.h:276:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  276 |     if(mmr_pattern_valid(p))return 1;p->used=0;return 0;
+      |     ^~
+./tests/../firmware/src/mm_records.h:276:38: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  276 |     if(mmr_pattern_valid(p))return 1;p->used=0;return 0;
+      |                                      ^
+In file included from ./tests/../firmware/src/mm_storage_ui.h:6,
+                 from ./tests/../firmware/src/project.c:806,
+                 from ./tests/sim_host.h:185,
+                 from ./tests/sim_core.c:7,
+                 from ./tests/sim_test.c:4:
+./tests/../firmware/src/mm_library.h: In function ‘library_save_sound’:
+./tests/../firmware/src/mm_library.h:243:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  243 |     if(!rc)rc=mmlib_commit();if(!rc)mmlib_metadata(slot/32);return rc?mmlib_error(rc):0;
+      |     ^~
+./tests/../firmware/src/mm_library.h:243:30: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  243 |     if(!rc)rc=mmlib_commit();if(!rc)mmlib_metadata(slot/32);return rc?mmlib_error(rc):0;
+      |                              ^~
+./tests/../firmware/src/mm_library.h: In function ‘library_delete_sound’:
+./tests/../firmware/src/mm_library.h:251:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  251 |     if(!rc)rc=mmlib_commit();if(!rc)mmlib_metadata(slot/32);return rc?mmlib_error(rc):0;
+      |     ^~
+./tests/../firmware/src/mm_library.h:251:30: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  251 |     if(!rc)rc=mmlib_commit();if(!rc)mmlib_metadata(slot/32);return rc?mmlib_error(rc):0;
+      |                              ^~
+./tests/../firmware/src/mm_library.h: In function ‘library_apply_sound’:
+./tests/../firmware/src/mm_library.h:262:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  262 |     if(!t)return MMS_INVALID;if(!library_ready()||mmlib_prepared!=3)return MMLIB_NOT_READY;
+      |     ^~
+./tests/../firmware/src/mm_library.h:262:30: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  262 |     if(!t)return MMS_INVALID;if(!library_ready()||mmlib_prepared!=3)return MMLIB_NOT_READY;
+      |                              ^~
+./tests/../firmware/src/mm_library.h: In function ‘library_load_sound’:
+./tests/../firmware/src/mm_library.h:268:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  268 |     if(!t)return MMS_INVALID;int rc=library_prepare_sound(slot);return rc?rc:library_apply_sound(t);
+      |     ^~
+./tests/../firmware/src/mm_library.h:268:30: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  268 |     if(!t)return MMS_INVALID;int rc=library_prepare_sound(slot);return rc?rc:library_apply_sound(t);
+      |                              ^~~
+./tests/../firmware/src/mm_library.h: In function ‘mmlib_project_kit’:
+./tests/../firmware/src/mm_library.h:280:13: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  280 |             if(v< -128||v>127)return MMS_CORRUPT;s->p[id]=(uint8_t)v;
+      |             ^~
+./tests/../firmware/src/mm_library.h:280:50: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  280 |             if(v< -128||v>127)return MMS_CORRUPT;s->p[id]=(uint8_t)v;
+      |                                                  ^
+./tests/sim_test.c: In function ‘c_includes.constprop’:
+./tests/sim_test.c:279:35: warning: ‘%s’ directive output may be truncated writing up to 245 bytes into a region of size 32 [-Wformat-truncation=]
+  279 |         snprintf(names[n++], 32, "%s", b);
+      |                                   ^~
+In file included from /usr/include/stdio.h:894,
+                 from ./tests/sim_test.c:5:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:71:10: note: ‘__builtin_snprintf’ output between 1 and 246 bytes into a destination of size 32
+   71 |   return __builtin___snprintf_chk (__s, __n, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   72 |                                    __glibc_objsize (__s), __fmt,
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   73 |                                    __va_arg_pack ());
+      |                                    ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h: In function ‘sprintf’:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:38:10: error: invalid use of ‘__builtin_va_arg_pack ()’
+   38 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   39 |                                   __glibc_objsize (__s), __fmt,
+      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   40 |                                   __va_arg_pack ());
+      |                                   ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h: In function ‘snprintf’:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:71:10: error: invalid use of ‘__builtin_va_arg_pack ()’
+   71 |   return __builtin___snprintf_chk (__s, __n, __USE_FORTIFY_LEVEL - 1,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   72 |                                    __glibc_objsize (__s), __fmt,
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   73 |                                    __va_arg_pack ());
+      |                                    ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h: In function ‘fprintf’:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:105:10: error: invalid use of ‘__builtin_va_arg_pack ()’
+  105 |   return __fprintf_chk (__stream, __USE_FORTIFY_LEVEL - 1, __fmt,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  106 |                         __va_arg_pack ());
+      |                         ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h: In function ‘printf’:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:112:10: error: invalid use of ‘__builtin_va_arg_pack ()’
+  112 |   return __printf_chk (__USE_FORTIFY_LEVEL - 1, __fmt, __va_arg_pack ());
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h: In function ‘dprintf’:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:149:10: error: invalid use of ‘__builtin_va_arg_pack ()’
+  149 |   return __dprintf_chk (__fd, __USE_FORTIFY_LEVEL - 1, __fmt,
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  150 |                         __va_arg_pack ());
+      |                         ~~~~~~~~~~~~~~~~~
+./tests/sim_test.c: At top level:
+cc1: note: unrecognized command-line option ‘-Wno-macro-redefined’ may have been intended to silence earlier diagnostics
