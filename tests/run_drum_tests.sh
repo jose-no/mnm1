@@ -77,7 +77,7 @@ for test in delay_port controls_port engine_port lfo_port lfo_integration; do
     cc -O2 -Wall -Wno-unused-function -fsanitize=address,undefined -fno-sanitize-recover=all "tests/${test}_test.c" -o "$OUT/${test}_test" -lm
     "$OUT/${test}_test"
 done
-for test in performance_options performance_ui performance_pages controller_mod filter_tracking trig_route multi_runtime multi_integration project_migration song_options demo_song save_roundtrip fullpreset busfx_integration calibrated_mix live_calibrated format_port trig_lanes seq_options arp_manual fractional_speed swing_mask song_swing seq_pages transpose; do
+for test in performance_options performance_ui performance_pages controller_mod filter_tracking trig_route multi_runtime multi_integration project_migration song_options demo_song save_roundtrip fullpreset busfx_integration calibrated_mix live_calibrated format_port trig_lanes seq_options arp_manual fractional_speed swing_mask song_swing seq_pages transpose gen; do
     cc -O1 -g -fsanitize=address,undefined -fno-sanitize=shift-base -fno-sanitize-recover=all -Wno-int-to-pointer-cast -Wno-macro-redefined -Ibuild/gen -Ifirmware/src "tests/${test}_test.c" -o "$OUT/${test}_test" -lm
     "$OUT/${test}_test"
 done

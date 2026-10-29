@@ -66,7 +66,7 @@ responsibility if your FM-1 is damaged or misbehaves. M-VAVE's own updater takes
 | **FX** | EFFECTS, SLICER, REVERB, CHORUS, LOFI; calibrated tracks also DESTROY and MOD FX. Hold for PERFORM |
 | **LFO** | LFO 1, 2, 3 |
 | **ARP** | existing ARP, then ARP MODE, ARP TRIG and ARP RHYTHM |
-| **SEQ** | STEP, PATTERN, MOTION, SONG, SWING MASK and TRANSPOSE |
+| **SEQ** | STEP, PATTERN, MOTION, SONG, SWING MASK, TRANSPOSE, GEN and GEN CHORD |
 | **HOME** | a tap: TRACKS (levels, lengths, pans) or HOME (the scope; SELECT on to COMP). Hold: the menu |
 | **GLO** | a tap: global settings; held: the white keys mute tracks |
 | **SAVE** | patterns (save, load, name), tools and independent KIT slots |
@@ -98,6 +98,25 @@ SWING MASK sets the pattern amount (50–80), step number and that track's enabl
 A value of 0 retains the old global/track swing controls. TRANSPOSE sets track amount,
 scale, key and the pattern amount. FIX ignores the pattern transpose; MAJ and MIN
 choose the nearest scale note, ties downward. Stored step notes remain unchanged.
+
+### GEN: generated phrases
+
+GEN writes phrases into a track's steps and varies them as they play. It is ported from
+[Mutable Dreams](https://github.com/kidbee85-beep/mutable-dreams) by Kid Bunka / Christoph Link.
+
+- **GEN page** (SEQ, after TRANSPOSE): **GEN** writes SPARSE (`SPRS`), ARP, PULSE (`PULS`) or DRIFT (`DRFT`) into the selected track's 64 steps,
+  from the pattern's seed, at the track's KEY plus **OCT** octaves, snapped to its SCALE. The steps are ordinary steps
+  afterwards: edit them, lock them, ratchet them. **MARB** (0–100 %) turns off-beat notes into the root, a third,
+  fourth or fifth as they play. The same seed, step and two-bar span give the same choice, so a phrase remembers its
+  variations. **FLLW** makes the track follow the chord journey (off by default: a drum's NOTE is its tuning).
+- **GEN CHORD page**: **CHRD** picks a journey (`1415` I-IV-I-V, `1645` I-VI-IV-V, `1741` I-VII-IV-I, `1364`
+  I-III-VI-IV, as degrees of each track's scale), **BARS** how long each chord lasts. **LOCK** repeats the
+  first two bars' variations. **UNDO** to GO puts back the steps, seed and settings from before the last write.
+- **REC** on either page draws a new seed and writes the selected track's phrase again. SPARSE is the same at any seed;
+  MARB still follows the seed.
+- The track SCALE (TRANSPOSE) adds DOR, PHR, MIN5, MAJ5 and WHL.
+
+During SONG playback, each row's steps play with the loaded pattern's GEN settings.
 
 ## Building
 

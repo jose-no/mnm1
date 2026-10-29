@@ -290,6 +290,7 @@ static int mmlib_project_pattern(mmr_pattern_t *out,const project_t *p,unsigned 
     memcpy(out->name,p->name,sizeof out->name);memcpy(out->g,p->g,sizeof out->g);
     out->motion=p->motion;out->song=p->song;out->options=p->options;
     memcpy(out->seq,p->seq,sizeof out->seq);
+    memcpy(out->gen,p->gen,sizeof out->gen);out->gen_pat=p->gen_pat;
     for(unsigned t=0;t<NTRK;++t){
         memcpy(out->step[t],p->t[t].step,sizeof out->step[t]);
         for(unsigned j=0;j<MMR_PATTERN_N;++j)out->timing[t][j]=proj_value(&p->t[t],MMR_PATTERN_PARAMS[j]);

@@ -8,7 +8,7 @@
 #ifndef MNM_RECORDS_H
 #define MNM_RECORDS_H
 #define MMR_VERSION 2u
-#define MMR_PATTERN_VERSION 4u
+#define MMR_PATTERN_VERSION 5u                /* 5: GEN (gen.h) */
 #define MMR_PATTERN_OLD_SIZE 2704u
 #define MMR_PATTERNS 8u
 #define MMR_KITS 8u
@@ -47,7 +47,17 @@ typedef struct {
     chain_config_t song;
     seq_options_t seq[NTRK];
     pattern_options_t options;
+    gen_options_t gen[NTRK];                       /* v5: GEN */
+    gen_pattern_t gen_pat;
 } mmr_pattern_t;
+/* v4 is v5 up to GEN */
+#define MMR_PATTERN_V4_SIZE ((__builtin_offsetof(mmr_pattern_t,gen)+1u)&~1u)
+_Static_assert(MMR_PATTERN_V4_SIZE==3034u,"pattern v4 layout changed");
+static void mmr_pattern_gen_default(mmr_pattern_t *p)
+{
+    for(unsigned k=0;k<NTRK;k++)gen_options_default(&p->gen[k]);
+    gen_pattern_default(&p->gen_pat);
+}
 /* Frozen pattern v3 prefix: v1/v2 end immediately after its 36-byte SONG. */
 typedef struct {
     uint16_t version;uint8_t used,kit,selected,reserved;char name[12];
@@ -60,6 +70,10 @@ static int mmr_pattern_upgrade(mmr_pattern_t *p,unsigned n)
 {
     unsigned version=p->version;
     if(version==MMR_PATTERN_VERSION)return n==sizeof *p;
+    if(version==4){
+        if(n!=MMR_PATTERN_V4_SIZE)return 0;
+        mmr_pattern_gen_default(p);p->version=MMR_PATTERN_VERSION;return 1;
+    }
     if(version<1||version>3||n!=(version==3?sizeof(mmr_pattern_v3_t):MMR_PATTERN_OLD_SIZE))return 0;
     if(version==3){
         uint8_t *dst=(void *)p->seq;
@@ -71,6 +85,7 @@ static int mmr_pattern_upgrade(mmr_pattern_t *p,unsigned n)
         p->options=(pattern_options_t){0};
     }
     memset(p->song.options,0,sizeof p->song.options);p->song.rsv[0]=p->song.rsv[1]=0;
+    mmr_pattern_gen_default(p);
     p->version=MMR_PATTERN_VERSION;return 1;
 }
 typedef struct {uint16_t version,reserved;mmr_kit_t kit[MMR_KITS_PER_OBJECT];} mmr_kits_t;
@@ -214,7 +229,7 @@ static int seq_options_valid(const seq_options_t *s)
 {
     return (s->arp_mode_order&7u)<=4&&(s->arp_mode_order>>3)<=4&&s->arp_ojmp<=7&&
         s->arp_len>=1&&s->arp_len<=16&&!(s->arp_flags&~31u)&&s->transpose>=-48&&s->transpose<=48&&
-        (s->scale_key&15u)<12&&(s->scale_key>>4)<4&&s->arp_speed>=1&&s->arp_speed<=96;
+        (s->scale_key&15u)<12&&(s->scale_key>>4)<SEQ_NSCALES&&s->arp_speed>=1&&s->arp_speed<=96;
 }
 static int pattern_options_valid(const pattern_options_t *s)
 {return (!s->swing||(s->swing>=50&&s->swing<=80))&&s->transpose>=-48&&s->transpose<=48&&s->scale<4&&s->key<12;}
@@ -223,6 +238,8 @@ static int mmr_pattern_valid(const mmr_pattern_t *p)
     if((p->version<1||p->version>MMR_PATTERN_VERSION)||p->used!=1||p->kit>=MMR_KITS||p->selected>=NTRK||p->reserved||
        !mmr_name_valid(p->name,sizeof p->name)||!motion_valid(&p->motion)||!chain_valid(&p->song))return 0;
     if(p->version>=3&&!pattern_options_valid(&p->options))return 0;
+    if(p->version>=5&&!gen_pattern_valid(&p->gen_pat))return 0;
+    for(unsigned k=0;k<NTRK;k++)if(p->version>=5&&!gen_options_valid(&p->gen[k]))return 0;
     for(unsigned k=0;k<NTRK;k++)if(p->version>=3&&!seq_options_valid(&p->seq[k]))return 0;
     for(unsigned i=0;i<G_COUNT;i++)if(p->g[i]<GP[i].min||p->g[i]>GP[i].max)return 0;
     for(unsigned k=0;k<NTRK;k++){
@@ -249,10 +266,12 @@ static int mmr_pattern_capture(mmr_pattern_t *p,const track_t *tracks,const int1
     if(name)for(unsigned i=0;i<NAME_LEN&&name[i];i++)p->name[i]=name_char_ok(name[i])?name[i]:' ';
     memcpy(p->g,globals,sizeof p->g);p->motion=*motion;p->song=*song_config;
     p->options=song.seq;
+    p->gen_pat=song.gen;
     for(unsigned k=0;k<NTRK;k++){
         for(unsigned j=0;j<MMR_PATTERN_N;j++)p->timing[k][j]=tracks[k].p[MMR_PATTERN_PARAMS[j]];
         memcpy(p->step[k],tracks[k].step,sizeof p->step[k]);
         p->seq[k]=tracks[k].seq;
+        p->gen[k]=tracks[k].gen;
     }
     if(mmr_pattern_valid(p))return 1;p->used=0;return 0;
 }
@@ -262,10 +281,12 @@ static int mmr_pattern_apply(track_t *tracks,int16_t *globals,motion_store_t *mo
     if(!mmr_pattern_valid(p))return 0;
     memcpy(globals,p->g,sizeof p->g);*motion=p->motion;*song_config=p->song;
     song.seq=p->version>=3?p->options:(pattern_options_t){0};
+    if(p->version>=5)song.gen=p->gen_pat;else gen_pattern_default(&song.gen);
     for(unsigned k=0;k<NTRK;k++){
         for(unsigned j=0;j<MMR_PATTERN_N;j++)tracks[k].p[MMR_PATTERN_PARAMS[j]]=p->timing[k][j];
         memcpy(tracks[k].step,p->step[k],sizeof p->step[k]);
         if(p->version>=3)tracks[k].seq=p->seq[k];else seq_options_default(&tracks[k].seq);
+        if(p->version>=5)tracks[k].gen=p->gen[k];else gen_options_default(&tracks[k].gen);
         if(p->version==1)for(unsigned i=0;i<NSTEP;i++)tracks[k].step[i].rsv=0;
     }
     return 1; /* selected track and kit link are returned in the validated record */

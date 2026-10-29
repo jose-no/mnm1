@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * MNM3/4/5/6/7 migration and extended MNM8 through the real project/storage code. */
+ * MNM3/4/5/6/7/8 migration and MNM9 (GEN) through the real project/storage code. */
 #define FELUCCA_FLASH 1
 #include <stdint.h>
 static uint8_t hflash[0x100000];
@@ -195,7 +195,7 @@ static void test_values_and_validation(void)
     assert(proj_decode(q,sizeof recent));
     assert(proj_value(&q->t[1],P_PAN)==-64 && proj_value(&q->t[1],P_MVOL)==127);
     assert(proj_value(&q->t[1],P_E7)==64);
-    printf("MNM8 %zu bytes; project/chain union %zu bytes\n",sizeof(project_t),sizeof proj_memory);
+    printf("MNM9 %zu bytes; project/chain union %zu bytes\n",sizeof(project_t),sizeof proj_memory);
 }
 static void test_mnm6(void)
 {
@@ -235,7 +235,7 @@ static void test_mnm6(void)
 static void test_mnm7(void)
 {
     mnm_project_v7_t old;
-    assert(sizeof old==3520 && sizeof(project_t)==3648);
+    assert(sizeof old==3520 && sizeof(project_t)==3680 && PROJ_V8_SIZE==3648);
     memset(&old,0,sizeof old);
     memcpy(&old,&expected,__builtin_offsetof(mnm_project_v7_t,name));
     memcpy(old.name,expected.name,sizeof old.name);
@@ -259,6 +259,9 @@ static void test_mnm7(void)
     assert(q->seq[4].swing[0]==0x37&&q->t[3].step[2].rsv==(ST_NOAMP|ST_NOPITCH));
     assert(!q->song.rsv[0]&&!q->song.rsv[1]);
     for(unsigned i=0;i<sizeof q->song.options;i++)assert(!((uint8_t*)q->song.options)[i]);
+    gen_options_t goff;gen_options_default(&goff);gen_pattern_t gpoff;gen_pattern_default(&gpoff);
+    for(unsigned k=0;k<NTRK;k++)assert(!memcmp(&q->gen[k],&goff,sizeof goff));   /* MNM9: GEN off */
+    assert(!memcmp(&q->gen_pat,&gpoff,sizeof gpoff));
     for(unsigned i=0;i<sizeof old;i++){
         memcpy(q,&old,sizeof old);decode_buf.bytes[i]^=1;
         assert(!proj_decode(q,sizeof old));
@@ -275,9 +278,39 @@ static void test_mnm7(void)
     *q=expected;q->song.options[0].jump=3;q->sum=proj_sum(q);
     assert(proj_decode(q,sizeof *q)&&proj_ok(q)&&!q->song.count&&!memcmp(q->t,expected.t,sizeof q->t));
 }
+/* MNM8: MNM9 without GEN, its sum where GEN starts; loads with GEN off, everything else as it was */
+static void test_mnm8(void)
+{
+    static union { project_t q; uint8_t bytes[3840]; } old;
+    memset(&old,0,sizeof old);
+    memcpy(&old.q,&expected,PROJ_V8_SIZE-4u);
+    old.q.song.options[1].bpm=133;old.q.song.options[1].jump=0;old.q.multi.split_key=71;
+    old.q.magic=PROJ_V8_MAGIC;old.q.size=PROJ_V8_SIZE;
+    uint32_t sum=proj_hash(&old.q,PROJ_V8_SIZE-4u);memcpy(old.bytes+PROJ_V8_SIZE-4u,&sum,4);
+    project_t *q=&decode_buf.q;
+    memcpy(q,&old,PROJ_V8_SIZE);assert(proj_decode(q,PROJ_V8_SIZE)&&proj_ok(q)&&q->magic==PROJ_MAGIC);
+    assert(!memcmp(q->t,expected.t,sizeof q->t)&&!memcmp(q->seq,expected.seq,sizeof q->seq));
+    assert(!memcmp(q->name,expected.name,sizeof q->name)&&!memcmp(&q->motion,&expected.motion,sizeof q->motion));
+    assert(q->song.options[1].bpm==133&&q->multi.split_key==71);
+    gen_options_t goff;gen_options_default(&goff);gen_pattern_t gpoff;gen_pattern_default(&gpoff);
+    for(unsigned k=0;k<NTRK;k++)assert(!memcmp(&q->gen[k],&goff,sizeof goff));
+    assert(!memcmp(&q->gen_pat,&gpoff,sizeof gpoff));
+    for(unsigned i=0;i<PROJ_V8_SIZE;i++){                /* any damaged byte: refused */
+        memcpy(q,&old,PROJ_V8_SIZE);decode_buf.bytes[i]^=1;
+        assert(!proj_decode(q,PROJ_V8_SIZE));
+    }
+    memcpy(q,&old,PROJ_V8_SIZE);assert(!proj_decode(q,PROJ_V8_SIZE-1));
+    memcpy(q,&old,PROJ_V8_SIZE);assert(!proj_decode(q,PROJ_V8_SIZE+1));
+    flash_ok=1;assert(!st_save(OBJ_PROJECT0+2,&old,PROJ_V8_SIZE));   /* through flash, as the FM-1 reads it */
+    proj_fetch(2);assert(proj_ok(&proj_slot[2])&&proj_slot[2].multi.split_key==71&&gen_seed(&proj_slot[2].gen_pat)==GEN_SEED_DEFAULT);
+    *q=expected;q->gen[1].marbles=101;q->sum=proj_sum(q);assert(!proj_decode(q,sizeof *q));   /* MNM9's own GEN checked */
+    *q=expected;q->gen_pat.journey=5;q->sum=proj_sum(q);assert(!proj_decode(q,sizeof *q));
+    *q=expected;q->gen[2]=(gen_options_t){4,100,-3,1};gen_seed_set(&q->gen_pat,99);q->sum=proj_sum(q);
+    assert(proj_decode(q,sizeof *q)&&q->gen[2].kind==4&&gen_seed(&q->gen_pat)==99);
+}
 int main(void)
 {
-    fixture(); test_decode(); test_flash();test_values_and_validation();test_mnm6();test_mnm7();
+    fixture(); test_decode(); test_flash();test_values_and_validation();test_mnm6();test_mnm7();test_mnm8();
     puts("project_migration_test: all passed");
     return 0;
 }

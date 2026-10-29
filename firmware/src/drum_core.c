@@ -449,6 +449,7 @@ static void drum_tracks_init(void)
         song.g[i] = GP[i].def;
     song.act[G_KSLOT-G_COUNT]=1;
     song.seq=(pattern_options_t){0};
+    gen_pattern_default(&song.gen);
     multi_options_default(&song.multi);
     ctlmod_reset();
     memset(&multi,0,sizeof multi);memset(multi_owner,0,sizeof multi_owner);
@@ -458,6 +459,7 @@ static void drum_tracks_init(void)
         track_t *t = &trk[k];
         memset(t, 0, sizeof *t);
         seq_options_default(&t->seq);
+        gen_options_default(&t->gen);
         for (i = 0; i < P_COUNT; i++)
             if (i < P_E0 || i > P_E7)
                 t->p[i] = TP[i].def;

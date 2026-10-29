@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Drum machine fork: 2026 DEADACTIVE */
-/* Four reset-persistent RAM slots, backed by flash. MNM8 extends song rows; MNM6 compacted parameters to
+/* Four reset-persistent RAM slots, backed by flash. MNM9 adds GEN (gen.h); MNM8 extends song rows; MNM6 compacted parameters to
  * bytes and adds sequencer options. MNM3/4/5/6/7 flash records compact in place in
  * storage's scratch buffer; old .noinit layouts are ignored across upgrades. */
-#define PROJ_MAGIC 0x384D4E4Du                 /* "MNM8": extended song rows */
+#define PROJ_MAGIC 0x394D4E4Du                 /* "MNM9": GEN */
+#define PROJ_V8_MAGIC 0x384D4E4Du              /* "MNM8": extended song rows */
 #define PROJ_V7_MAGIC 0x374D4E4Du
 #define PROJ_V6_MAGIC 0x364D4E4Du
 #define PROJ_V5_MAGIC 0x354D4E4Du
@@ -62,8 +63,13 @@ typedef struct {
     uint8_t pre_ed[NTRK];                       /* FDRD: .. edited since (0 / 1) */
     perf_options_t perf[NTRK];
     multi_options_t multi;
+    gen_options_t gen[NTRK];                    /* MNM9: GEN, each track's (gen.h) */
+    gen_pattern_t gen_pat;                      /* MNM9: GEN, the seed and the chord journey */
     uint32_t sum;
 } project_t;
+/* MNM8 is MNM9 up to GEN: its sum sat where GEN starts (4-aligned) */
+#define PROJ_V8_SIZE (((__builtin_offsetof(project_t,gen)+3u)&~3u)+4u)
+_Static_assert(PROJ_V8_SIZE==3648u,"MNM8 layout changed");
 /* Frozen MNM6 prefix: future live parameter/option counts must not change it. */
 typedef struct {uint8_t p[97];step_t step[64];} mnm_proj_v6_trk_t;
 typedef struct {
@@ -140,10 +146,17 @@ static void proj_compact_copy(void *dst,const void *src,unsigned n)
 }
 static int proj_options_valid(const project_t *q)
 {
-    if(!chain_valid(&q->song)||!pattern_options_valid(&q->options)||!multi_options_valid(&q->multi))return 0;
+    if(!chain_valid(&q->song)||!pattern_options_valid(&q->options)||!multi_options_valid(&q->multi)||
+       !gen_pattern_valid(&q->gen_pat))return 0;
     for(unsigned k=0;k<NTRK;k++)
-        if(!seq_options_valid(&q->seq[k])||!perf_options_valid(&q->perf[k]))return 0;
+        if(!seq_options_valid(&q->seq[k])||!perf_options_valid(&q->perf[k])||!gen_options_valid(&q->gen[k]))return 0;
     return 1;
+}
+/* every project older than MNM9: GEN off (its phrases are plain steps already) */
+static void proj_gen_default(project_t *q)
+{
+    for(unsigned k=0;k<NTRK;k++)gen_options_default(&q->gen[k]);
+    gen_pattern_default(&q->gen_pat);
 }
 static void proj_upgrade_performance(mnm_project_v7_t *q)
 {
@@ -163,6 +176,7 @@ static int proj_expand_song(project_t *q)
     memset(q->song.rsv,0,sizeof q->song.rsv);
     /* Legacy loads discarded a damaged arrangement while retaining valid notes/sounds. */
     if(!chain_valid(&q->song))memset(&q->song,0,sizeof q->song);
+    proj_gen_default(q);
     q->magic=PROJ_MAGIC;q->size=sizeof *q;q->sum=proj_sum(q);
     return proj_options_valid(q);
 }
@@ -185,11 +199,18 @@ static int proj_decode(project_t *q,uint32_t n)
     case PROJ_V4_MAGIC:case PROJ_V5_MAGIC:oldsize=sizeof *v5;break;
     case PROJ_V6_MAGIC:oldsize=sizeof(mnm_project_v6_t);break;
     case PROJ_V7_MAGIC:oldsize=sizeof *v7;break;
+    case PROJ_V8_MAGIC:oldsize=PROJ_V8_SIZE;break;
     default:return 0;
     }
     if(n!=oldsize||q->size!=oldsize)return 0;
     uint32_t sum;memcpy(&sum,(const uint8_t *)q+oldsize-4,4);
     if(sum!=proj_hash(q,oldsize-4))return 0;
+    if(q->magic==PROJ_V8_MAGIC){
+        if(!chain_valid(&q->song))memset(&q->song,0,sizeof q->song);   /* (as an MNM8 read did) */
+        proj_gen_default(q);
+        q->magic=PROJ_MAGIC;q->size=sizeof *q;q->sum=proj_sum(q);
+        return proj_options_valid(q);
+    }
     if(q->magic==PROJ_V7_MAGIC)return proj_expand_song(q);
     if(q->magic==PROJ_V6_MAGIC){proj_upgrade_performance(v7);return proj_expand_song(q);}
     uint8_t sel=old3?v3->sel:v5->sel;
@@ -265,12 +286,14 @@ static void project_save(uint32_t slot)
     for (i = 0; i < NTRK; i++) {
         for(unsigned j=0;j<P_COUNT;j++)p->t[i].p[j]=proj_byte((unsigned)trk[i].p[P_MODEL],j,trk[i].p[j]);
         p->seq[i]=trk[i].seq;
+        p->gen[i]=trk[i].gen;
         p->perf[i]=trk[i].perf;
         memcpy(p->t[i].step, trk[i].step, sizeof trk[i].step);
         p->pre[i] = (uint16_t)preset_rec_enc(trk[i].pre);   /* (stable: a uid / a user slot, presets.c) */
         p->pre_ed[i] = trk[i].pre_ed;
     }
     p->options=song.seq;
+    p->gen_pat=song.gen;
     p->multi=song.multi;
     p->motion = mo.s;                                  /* (stopped: the base is in the knobs) */
     p->song = chain.cfg;
@@ -331,6 +354,7 @@ static int proj_load(uint32_t slot, int irq)
         fm1_irq_off();                                  /* the audio ISR must not see half a project */
     multi_stop();ctlmod_reset();
     song.seq=p->options;
+    song.gen=p->gen_pat;
     song.multi=p->multi;
     mmen_reset_all();
     mmen_lfo_reset();
@@ -350,6 +374,7 @@ static int proj_load(uint32_t slot, int irq)
             t->p[i] = (int16_t)clamp(proj_value(s,i), d->min, d->max);
         }
         t->seq=p->seq[k];
+        t->gen=p->gen[k];
         t->perf=p->perf[k];
         t->p[P_MODEL] = (int16_t)m;
         t->model = (uint8_t)m;

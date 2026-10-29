@@ -160,7 +160,7 @@ static void test_flag_storage(void)
     for(unsigned k=0;k<NTRK;k++)for(unsigned i=0;i<NSTEP;i++){
         trk[k].step[i].on=1;trk[k].step[i].rsv=(uint8_t)(i&ST_MASK);
     }
-    project_save(0);assert(proj_slot[0].magic==PROJ_MAGIC&&PROJ_MAGIC==0x384D4E4Du);
+    project_save(0);assert(proj_slot[0].magic==PROJ_MAGIC&&PROJ_MAGIC==0x394D4E4Du);
     memset(trk[0].step,0,sizeof trk[0].step);project_load(0);transport_req=0;
     for(unsigned k=0;k<NTRK;k++)for(unsigned i=0;i<NSTEP;i++)assert(trk[k].step[i].rsv==(i&ST_MASK));
     memset(&old,0,sizeof old);old.wire.magic=PROJ_V4_MAGIC;old.wire.size=sizeof old.wire;
@@ -170,7 +170,7 @@ static void test_flag_storage(void)
     old.wire.sum=proj_hash(&old.wire,sizeof old.wire-4);assert(proj_decode(&old.current,sizeof old.wire)&&proj_ok(&old.current));
     for(unsigned k=0;k<NTRK;k++)for(unsigned i=0;i<NSTEP;i++)assert(!old.current.t[k].step[i].rsv);
     assert(mmr_pattern_capture(&pattern,trk,song.g,&mo.s,&chain.cfg,0,0,"FLAGS"));
-    assert(pattern.version==4&&MMR_PATTERN_VERSION==4);
+    assert(pattern.version==5&&MMR_PATTERN_VERSION==5);
     memset(trk[0].step,0,sizeof trk[0].step);
     assert(mmr_pattern_apply(trk,song.g,&mo.s,&chain.cfg,&pattern));
     for(unsigned i=0;i<NSTEP;i++)assert(trk[0].step[i].rsv==(i&ST_MASK));

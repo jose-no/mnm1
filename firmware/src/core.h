@@ -154,7 +154,32 @@ typedef struct {
     int8_t transpose;
     uint8_t scale_key, arp_speed;
 } seq_options_t;
+#define SEQ_NSCALES 9u           /* seq_options_t.scale_key >> 4: --- FIX MAJ MIN DOR PHR MIN5 MAJ5 WHL */
 typedef struct {uint8_t swing;int8_t transpose;uint8_t scale,key;} pattern_options_t;
+/* GEN (gen.h, ported from Mutable Dreams by Kid Bunka / Christoph Link): a track's phrase generator and its live
+ * variation, and the pattern's seed and chord journey. Byte layout shared by flash records. */
+typedef struct {
+    uint8_t kind;                /* the last phrase written: 0 none, 1 SPARSE, 2 ARP, 3 PULSE, 4 DRIFT */
+    uint8_t marbles;             /* 0..100 %: off-beat notes become the root, a third, fourth or fifth */
+    int8_t oct;                  /* -3..3: the generated phrase's octave around C4 */
+    uint8_t follow;              /* 1: the track follows the chord journey (FLLW) */
+} gen_options_t;
+typedef struct {
+    uint8_t seed[4];             /* little-endian, never 0 (xorshift): gen_seed / gen_seed_set */
+    uint8_t journey, bars, lock, rsv;   /* journey 0 OFF, 1..4; bars a chord 1..8; lock: variation repeats */
+} gen_pattern_t;
+_Static_assert(sizeof(gen_options_t)==4&&sizeof(gen_pattern_t)==8,"GEN wire size");
+#define GEN_SEED_DEFAULT 0x2545F491u
+static uint32_t gen_seed(const gen_pattern_t *g)
+{return g->seed[0]|(uint32_t)g->seed[1]<<8|(uint32_t)g->seed[2]<<16|(uint32_t)g->seed[3]<<24;}
+static void gen_seed_set(gen_pattern_t *g,uint32_t v)
+{if(!v)v=GEN_SEED_DEFAULT;g->seed[0]=(uint8_t)v;g->seed[1]=(uint8_t)(v>>8);g->seed[2]=(uint8_t)(v>>16);g->seed[3]=(uint8_t)(v>>24);}
+static void gen_options_default(gen_options_t *g){*g=(gen_options_t){0};}   /* (FLLW off: a drum's NOTE is its tuning) */
+static void gen_pattern_default(gen_pattern_t *g){*g=(gen_pattern_t){.bars=2};gen_seed_set(g,GEN_SEED_DEFAULT);}
+static int gen_options_valid(const gen_options_t *g)
+{return g->kind<=4&&g->marbles<=100&&g->oct>=-3&&g->oct<=3&&g->follow<=1;}
+static int gen_pattern_valid(const gen_pattern_t *g)
+{return gen_seed(g)&&g->journey<=4&&g->bars>=1&&g->bars<=8&&g->lock<=1&&!g->rsv;}
 _Static_assert(sizeof(seq_options_t)==33,"sequence option wire size");
 static void seq_options_default(seq_options_t *s)
 {
@@ -189,6 +214,7 @@ typedef struct track {
     /* sequencer */
     step_t step[NSTEP];
     seq_options_t seq;
+    gen_options_t gen;           /* GEN (gen.h) */
     perf_options_t perf;
     int16_t multi_pitch_ref;
     int8_t nt;                   /* the playing note's offset from C4 (the step's, 0 for MIDI, keys): models read TUNE through dm_tune */
@@ -248,6 +274,7 @@ typedef struct {
     uint32_t master_q12;
     int32_t batt_raw;            /* smoothed ADC ch3 (battery divider), 0 = not read yet */
     pattern_options_t seq;
+    gen_pattern_t gen;           /* GEN: the seed, the chord journey (gen.h) */
     multi_options_t multi;
     int16_t multi_pitch16;
     int16_t act[G_ACT_END-G_COUNT]; /* TOOLS/KIT action knobs, never stored; MUTE: a

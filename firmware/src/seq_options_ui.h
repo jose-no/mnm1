@@ -10,7 +10,8 @@ enum {
 static uint8_t seqopt_rhythm_step,seqopt_swing_step;
 static const char *const SO_MODES[]={"LEGACY","KEY","SID","ADD","OFF"};
 static const char *const SO_ORDERS[]={"TRUE","UP","DOWN","CYCLE","RND"};
-static const char *const SO_SCALES[]={"---","FIX","MAJ","MIN"};
+static const char *const SO_SCALES[]={"---","FIX","MAJ","MIN","DOR","PHR","MIN5","MAJ5","WHL"};
+static const char *const SO_PSCALES[]={"---","FIX","MAJ","MIN"};   /* (the pattern's: stored as before) */
 static const char *const SO_KEYS[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
 static const param_desc_t SO_DESC[SO_COUNT]={
  [SO_MODE]=PE("MODE",SO_MODES,0),[SO_ORDER]=PE("PLAY",SO_ORDERS,0),
@@ -20,7 +21,7 @@ static const param_desc_t SO_DESC[SO_COUNT]={
  [SO_RSTEP]=PD("STEP",F_INT,1,16,1),[SO_RON]=PD("ON",F_ONOFF,0,1,1),[SO_ROFF]=PD("OFFS",F_INT,-128,127,0),
  [SO_SWING]=PD("SWING",F_INT,0,80,0),[SO_SSTEP]=PD("STEP",F_INT,1,64,1),[SO_SON]=PD("ON",F_ONOFF,0,1,0),
  [SO_TRANS]=PD("TRANS",F_INT,-48,48,0),[SO_SCALE]=PE("SCALE",SO_SCALES,0),[SO_KEY]=PE("KEY",SO_KEYS,0),
- [SO_PTRANS]=PD("PAT",F_INT,-48,48,0),[SO_PSCALE]=PE("SCALE",SO_SCALES,0),[SO_PKEY]=PE("KEY",SO_KEYS,0)
+ [SO_PTRANS]=PD("PAT",F_INT,-48,48,0),[SO_PSCALE]=PE("SCALE",SO_PSCALES,0),[SO_PKEY]=PE("KEY",SO_KEYS,0)
 };
 static int seqopt_get(const track_t *t,const pattern_options_t *p,unsigned id)
 {

@@ -262,11 +262,13 @@ static __attribute__((noinline)) void acid_step(track_t *t, const step_t *s, con
     acid_gate_set(t, next);
 }
 
+#include "gen.h"                    /* GEN: MARBLES and the CHORD journey on the step as it plays */
+
 /* the step that came up: decided once (step_plays), then RATCH hits spread over its length len_s, the first
  * now (rat_due plays the others). A track following Grids plays nothing from its steps; a drum's TIE step nothing. */
 static void step_fire(track_t *t, uint32_t len_s)
 {
-    const step_t *s = seq_step_at(t,t->seq_idx);
+    const step_t *s = gen_step(t, seq_step_at(t,t->seq_idx));
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
     if(s->rsv){
         t->rat_n=0;

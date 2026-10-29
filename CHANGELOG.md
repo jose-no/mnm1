@@ -5,6 +5,18 @@ own history is in its repository.
 
 ## Unreleased
 
+- Add GEN, a phrase generator ported from Mutable Dreams 1.2 by Kid Bunka / Christoph Link (GPL-3.0-only), on two new
+  SEQ pages after TRANSPOSE. GEN: GEN (SPARSE, ARP, PULSE, DRIFT writes the track's 64 steps from the pattern's seed,
+  at KEY + OCT, snapped to the track's SCALE), MARB (0–100 %: off-beat notes become the root, a third, fourth or fifth;
+  remembered per seed, position and 2-bar span), OCT, FLLW (the track follows the chord journey). GEN CHORD: CHRD (OFF,
+  I-IV-I-V, I-VI-IV-V, I-VII-IV-I, I-III-VI-IV as scale degrees), BARS (1–8 a chord), LOCK (the variation repeats),
+  UNDO (one level). REC on either page draws a new seed and writes the phrase again. Generated steps are ordinary steps;
+  MARBLES and the journey change the notes as they play, never the stored steps.
+- Add DOR, PHR, MIN5, MAJ5 and WHL to the track SCALE (TRANSPOSE page), after MAJ and MIN. The pattern SCALE keeps its
+  four values.
+- Projects become MNM9 (3680 bytes) and patterns version 5 (3066 bytes), adding GEN. MNM8 projects and version-four
+  patterns load with GEN off; nothing else in them changes.
+
 ## 1.0.1 - 2026-10-27
 
 - Give MNM-1 its own stable USB/package identity, FM-1_61000100, so firmware hubs can distinguish it from other firmware. Sound, controls and saved-data formats are unchanged.

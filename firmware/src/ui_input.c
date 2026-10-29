@@ -534,6 +534,14 @@ static void edit_param(uint32_t slot, int32_t steps)
         }
         fm1_irq_on();ui.force=1;return;
     }
+    if(pg->scope==SC_GENOPT){                         /* GEN (gen_ui.h): a phrase writes the track's steps */
+        if(song_lock())return;
+        fm1_irq_off();
+        int changed=genopt_set(TSEL,id,v);
+        fm1_irq_on();
+        if(id==GO_UNDO&&v)ui_message(changed?"UNDONE":"NOTHING TO UNDO");
+        ui.force=1;return;
+    }
 
     if (pg->scope == SC_TRACK && vp >= TSEL->p && vp < TSEL->p + P_COUNT && (PRE_SOUND(vp - TSEL->p) || (TSEL->p[P_MODEL] >= MM_MODEL_FIRST && mm_control_desc(vp - TSEL->p))) && v != *vp)
         preset_touch(TSEL);                           /* presets.c: the voice edited (not a turn at its limit) */
@@ -992,7 +1000,16 @@ static void ui_input(void)
             ui.force = 1;
         }
     } else if (rec == BT_TAP && !ui.confirm) {          /* spec §4: REC arms on every screen */
-        if (ui.srec) {
+        if (gen_page()) {                               /* GEN: a new seed, the phrase written again (gen.h) */
+            if (!song_lock()) {
+                int wrote;
+                fm1_irq_off();
+                wrote = gen_mutate(TSEL);
+                fm1_irq_on();
+                ui_message(wrote ? "NEW PHRASE" : "NEW SEED");
+                ui.force = 1;
+            }
+        } else if (ui.srec) {
             ui.srec = 0;                                /* step record ends */
         } else if (srec_ok()) {
             srec_start();                               /* KEYS, STEP, stopped: step record */

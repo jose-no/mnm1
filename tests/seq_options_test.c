@@ -64,7 +64,7 @@ static void test_options(void)
         q=base;q.arp_len=v;assert(seq_options_valid(&q)==(v>=1&&v<=16));
         q=base;q.arp_flags=v;assert(seq_options_valid(&q)==(v<=31));
         q=base;q.transpose=(int8_t)v;assert(seq_options_valid(&q)==(q.transpose>=-48&&q.transpose<=48));
-        q=base;q.scale_key=v;assert(seq_options_valid(&q)==((v&15)<12&&(v>>4)<4));
+        q=base;q.scale_key=v;assert(seq_options_valid(&q)==((v&15)<12&&(v>>4)<SEQ_NSCALES));
         q=base;q.arp_speed=v;assert(seq_options_valid(&q)==(v>=1&&v<=96));
         pattern_options_t p={0};p.swing=v;assert(pattern_options_valid(&p)==(!v||(v>=50&&v<=80)));
         p=(pattern_options_t){0};p.transpose=(int8_t)v;assert(pattern_options_valid(&p)==(p.transpose>=-48&&p.transpose<=48));

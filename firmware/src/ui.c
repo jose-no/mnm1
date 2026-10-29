@@ -172,6 +172,10 @@ static uint8_t step_lane_flags(void){return ui.lane?(uint8_t)((7u&~(1u<<(ui.lane
 static int grid_mode(void) { return !ui.home && !ui.menu && cur_page()->scope == SC_GRID; }
 static int mix_mode(void) { return !ui.home && !ui.menu && cur_page()->scope == SC_MIX; }   /* HOME's TRACKS mode */
 static int comp_mode(void) { return !ui.home && !ui.menu && cur_page()->graph == GR_COMP; }   /* COMP: keys DUCK */
+static int gen_page(void)                            /* GEN, GEN CHORD: REC writes a new phrase (gen.h) */
+{
+    return !ui.home && !ui.menu && cur_page()->scope == SC_GENOPT;
+}
 /* KEYS (spec §5): the keys a chromatic keyboard of the selected track on every page but TRACKS and COMP (their step /
  * duck keys); NAME and the menu keep theirs, and FX held takes its keys first (seq.c keyboard_block). MNM-1: KEYS is on
  * from power-on (the keyboard plays the tracks' notes) and the SEQ pages keep their steps on the white
