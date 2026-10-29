@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Builds the installable FM-1 package (build/felucca.fwsc) on a Linux x86-64 runner, where JieLi's toolchain runs
+# natively (BUILDING.md), runs the GEN host test first, and publishes the package as a workflow artifact and a
+# pre-release named after the commit.
+name: build-firmware
+on:
+  push:
+    branches: [generative]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  firmware:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python packages
+        run: pip install Pillow
+      - name: GEN host test
+        run: |
+          python3 tools/build.py --gen-only >/dev/null
+          mkdir -p build/host build/ui_shots/gen
+          cc -O1 -g -fsanitize=address,undefined -fno-sanitize=shift-base -fno-sanitize-recover=all \
+             -Wno-int-to-pointer-cast -Ibuild/gen -Ifirmware/src tests/gen_test.c -o build/host/gen_test -lm
+          build/host/gen_test
+      - name: JieLi toolchain
+        run: sh tools/get_toolchain.sh "$HOME/.jieli"
+      - name: JieLi AC79 SDK (the three files the package uses)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse --branch AC79NN_SDK_V1.2.1_2023-12-13 \
+              https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
+          git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set cpu/wl82/tools
+          ls -l "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
+      - name: Build
+        run: ./build.sh
+      - name: Name the package
+        id: pkg
+        run: |
+          SHA=$(git rev-parse --short=7 HEAD)
+          VER=$(cat VERSION.txt)
+          NAME="mnm1-gen-${VER}-${SHA}.fwsc"
+          cp build/felucca.fwsc "build/$NAME"
+          sha256sum "build/$NAME" | tee "build/$NAME.sha256"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=gen-${SHA}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            build/${{ steps.pkg.outputs.name }}
+            build/${{ steps.pkg.outputs.name }}.sha256
+            build/felucca.bin
+            build/loader/ota.bin
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.pkg.outputs.tag }}" \
+            "build/${{ steps.pkg.outputs.name }}" "build/${{ steps.pkg.outputs.name }}.sha256" \
+            --prerelease --target "$GITHUB_SHA" --title "MNM-1 + GEN (${{ steps.pkg.outputs.tag }})" \
+            --notes "Untested on hardware. MNM-1 with GEN (ported from Mutable Dreams by Kid Bunka / Christoph Link). Install with the MNM-1 web installer (choose this .fwsc file) or tools/fm1_install.py. Back to stock: M-VAVE's M-UPGRADE."
