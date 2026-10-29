@@ -25,6 +25,10 @@ jobs:
           node-version: "20"
       - name: Python packages
         run: pip install Pillow
+      - name: cc is clang (the host and simulator sources are built with clang, as on macOS)
+        run: |
+          mkdir -p "$HOME/ccbin" && ln -sf "$(command -v clang)" "$HOME/ccbin/cc"
+          echo "$HOME/ccbin" >> "$GITHUB_PATH"
       - name: GEN host test
         run: |
           python3 tools/build.py --gen-only >/dev/null
