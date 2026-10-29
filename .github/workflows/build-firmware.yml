@@ -37,14 +37,14 @@ jobs:
           git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set cpu/wl82/tools
           ls -l "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
       - name: Build
-        run: ./build.sh
+        run: DRUM_PACKAGE=1 DRUM_SITE=0 ./build.sh     # writes build/felucca-UNTESTED.fwsc (no web site)
       - name: Name the package
         id: pkg
         run: |
           SHA=$(git rev-parse --short=7 HEAD)
           VER=$(cat VERSION.txt)
           NAME="mnm1-gen-${VER}-${SHA}.fwsc"
-          cp build/felucca.fwsc "build/$NAME"
+          cp build/felucca-UNTESTED.fwsc "build/$NAME"
           sha256sum "build/$NAME" | tee "build/$NAME.sha256"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "tag=gen-${SHA}" >> "$GITHUB_OUTPUT"
