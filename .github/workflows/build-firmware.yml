@@ -44,9 +44,14 @@ jobs:
         with:
           version: latest
       - name: Web simulator
-        run: emcc --version | head -1 && tools/build_sim.sh
+        run: |
+          mkdir -p build
+          set -o pipefail
+          { emcc --version | head -1; tools/build_sim.sh; } 2>&1 | tee build/ci-sim.log
       - name: Build
-        run: DRUM_PACKAGE=1 ./build.sh     # build/felucca-UNTESTED.fwsc and the site in build/site
+        run: |
+          set -o pipefail
+          DRUM_PACKAGE=1 ./build.sh 2>&1 | tee build/ci-build.log     # build/felucca-UNTESTED.fwsc, the site in build/site
       - name: Name the package
         id: pkg
         run: |
@@ -83,3 +88,13 @@ jobs:
           git add -A
           git commit -q -m "Site for ${{ steps.pkg.outputs.tag }} (${GITHUB_SHA})"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+      - name: Logs to ci-log (on failure)
+        if: failure()
+        run: |
+          mkdir -p /tmp/log && cp build/ci-*.log /tmp/log/ 2>/dev/null || true
+          cd /tmp/log
+          git init -q -b ci-log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "CI log ${GITHUB_SHA}" --allow-empty
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-log
