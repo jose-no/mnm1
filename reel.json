@@ -1,0 +1,10 @@
+[
+  {"name": "home", "from": 0, "to": 54},
+  {"name": "seq", "from": 54, "to": 120},
+  {"name": "synth", "from": 120, "to": 180},
+  {"name": "filter", "from": 180, "to": 252},
+  {"name": "effects", "from": 252, "to": 306},
+  {"name": "lfo", "from": 306, "to": 360},
+  {"name": "tracks", "from": 360, "to": 495},
+  {"name": "end", "from": 495, "to": 510}
+]

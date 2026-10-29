@@ -1,0 +1,95 @@
+# Felucca licensing
+
+Felucca is free software. Its **code** is licensed under the GNU General Public License,
+version 3 only (`GPL-3.0-only`, full text in `LICENSE`). Its **assets** are not part of
+that licence: the panel image `docs/panel.jpg` and the drum sounds made by
+`tools/gen_waves.py` (the Hügelton Sample Pack) are Copyright (C) 2026 Hügelton Instruments,
+all rights reserved. Their licence terms will be published later.
+
+Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+
+## What is code (GPL-3.0-only)
+
+Every file in this tree that carries an `SPDX-License-Identifier: GPL-3.0-only` header:
+
+- the firmware: `firmware/` (app, HAL, update loader)
+- the build script and tools: `build.sh`, `tools/`
+- the web pages (installer, editor) and their tests: `web/` (not the Fukiai font, below)
+- the host tests: `tests/`
+
+You may use, study, change and share it under the GPL. If you distribute Felucca, or
+firmware derived from it, you must also give your recipients its complete corresponding
+source under the same licence. That includes devices that ship with modified Felucca
+inside.
+
+## Additional permission (GPL-3.0 section 7)
+
+As an additional permission under GPL-3.0 section 7, you may combine Felucca, or a work
+based on it, with the Felucca Assets (above), and convey the combination.
+This is allowed even though the Felucca Assets are not licensed under the GPL, provided
+that:
+
+- you follow the GPL for every part that is not a Felucca Asset; and
+- you follow the terms published for the assets.
+
+The Felucca Assets are data (wavetables, icons, sample data). They are not program
+code. A firmware image built from the GPL sources with replacement assets, or with no
+assets, is entirely governed by the GPL.
+
+## Third-party material
+
+| What | Licence | Where |
+| --- | --- | --- |
+| MONO2K by Inigo Hernandez (<https://github.com/InigoHernandez/mono2k>), revision `78d7cdfd676dd8a88a06e6b794fbcfb5fa2b1537`: calibrated machines, audio chain, effects, LFOs, arpeggiator laws and full factory sounds | GPL-3.0-only | `firmware/src/mm_*.h`, `mm_engine.c`, credited ports and tests; sound provenance in `tests/mono2k_sounds.json` |
+| Mutable Dreams 1.2 by Kid Bunka / Christoph Link (<https://github.com/kidbee85-beep/mutable-dreams>): the GEN phrase generators, the Marbles-inspired remembered variation, the chord journeys and the DOR/PHR/MIN5/MAJ5/WHL scale set are a C port of `app/dsp/dreams.cpp` (`generate_sequence`, `tick`, `chord_offset`, `md_quantize`) | GPL-3.0-only | `firmware/src/gen.h`, `firmware/src/seq_transpose.h`; `tests/gen_test.c` |
+| Instrument samples (Versilian Studios VSCO-2 CE, VCSL) | CC0 1.0 | `assets/samples-cc0/`, provenance in `ATTRIBUTION.txt` there |
+| Terminus font 8x16 (ter-u16n): the web pages' typeface (`tests/sim_font.mjs`); no longer in the firmware | SIL OFL 1.1 | `assets/fonts/ter-u16n.bdf`, `assets/fonts/Terminus-LICENSE.txt` |
+| UnifrakturMaguntia (j. 'mach' wust, Peter Wiegel): the boot screen study (`tools/boot_variants.py`; no longer in the firmware: the screens are drawn in the pixel font below) | SIL OFL 1.1 | `assets/fonts/UnifrakturMaguntia-Book.ttf`, `assets/fonts/UnifrakturMaguntia-LICENSE.txt` |
+| UnifrakturCook Bold (j. 'mach' wust, Peter Wiegel): one face of the boot screen study (`tools/boot_variants.py`; its other faces are SIL OFL 1.1, fetched from Google Fonts at run time, not shipped) | SIL OFL 1.1 | `assets/fonts/UnifrakturCook-Bold.ttf`, `assets/fonts/UnifrakturCook-LICENSE.txt` |
+| Fukiai icon font (Hügelton Instruments), web editor only | MIT | `web/fukiai.ttf`, `web/FUKIAI-LICENSE.txt`, `LICENSES/MIT-Fukiai.txt` |
+| Grids by Emilie Gillet / Mutable Instruments (<https://github.com/pichenettes/eurorack>): the GRIDS pattern engine is a C port of `grids/pattern_generator.cc` with its pattern tables (and avrlib's random generator) | GPL-3.0-or-later | `firmware/src/grids.c`, `firmware/src/grids_tables.h` |
+| Streams by Emilie Gillet / Mutable Instruments (<https://github.com/pichenettes/eurorack>): the COMP sidechain compressor is a C port of `streams/compressor.cc` with its tables | MIT | `firmware/src/comp.c`, `firmware/src/comp_tables.h`; `LICENSES/MIT-Mutable-Instruments.txt` |
+| Plaits and stmlib by Emilie Gillet / Mutable Instruments (<https://github.com/pichenettes/eurorack>): integer ports of its drum algorithms | MIT | `firmware/src/dm_kick.c`, `dm_snare.c`, `dm_metal.c`, `dm_dsp.c`; `LICENSES/MIT-Mutable-Instruments.txt` |
+| DaisySP by Electrosmith and Emilie Gillet (<https://github.com/electro-smith/DaisySP>): the modal resonator and the membrane (SKIN engine, RESON effect) are fixed-point ports of its physical models (Source/PhysicalModeling, Filters, Noise, Utility) | MIT | `firmware/src/phys_dsp.c`; `LICENSES/MIT-DaisySP.txt` |
+| jl-uboot-tool by Andrey Grigoryev (kagaimiq) (<https://github.com/kagaimiq/jl-uboot-tool>): the boot-mode cipher and command framing in the Mac recovery tool. Its `wl82loader.bin` is not in this tree; users fetch it (docs/RECOVERY.md) | MIT | `tools/rescue/fm1_uboot.py`; `LICENSES/MIT-jl-uboot-tool.txt` |
+| JieLi AC79 SDK: `uboot.boot`, `cfg_tool.bin`, `eq_cfg_hw.bin` are read from your SDK checkout at build time and placed in the package; no SDK files are in this tree | Apache-2.0 | <https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK>; `LICENSES/Apache-2.0.txt` |
+| JieLi AC79 SDK BT libraries (btctrler, btstack, wl_rf_common, crypto_toolbox, lib_ccm_aes, compiler_rt; members of system.a, cpu.a) and its BT config sources (`lib_btctrler_config.c`, `bt_profile_config.c`), linked into BLE builds only (`FELUCCA_BLE=1`): read from your SDK V1.2.0 copy at build time, none in this tree | Apache-2.0 | SDK V1.2.0, pinned in `tools/ble_libs.py`; `LICENSES/Apache-2.0.txt` |
+| JieLi AC79 SDK `apps/common/net/wifi_conf.c`: the radio's RX thresholds and RF look-up table, BLE builds only | Apache-2.0 | `firmware/src/ble/ble_rf_tables.c`; `LICENSES/Apache-2.0.txt` |
+
+The licence texts in `LICENSES/` travel with every published package (`web/make_site.py`).
+
+## Research (not in the firmware)
+
+The MD bank's voices (TRX, EFM) were tuned against measurements of an emulator by Joe Landers, a fork of
+[Gearmulator](https://github.com/dsp56300/gearmulator) by The Usual Suspects (the DSP56300 project). Only
+measurements were taken (renders, analysed by ear and by tools); no code, firmware or data from the emulator is in this tree
+or in the firmware. Neither Hortator nor MNM-1 is affiliated with, endorsed by or supported by Joe Landers or The
+Usual Suspects.
+
+## Services used by the site
+
+The published landing page, installer and editor use [GoatCounter](https://www.goatcounter.com) (a hosted service,
+not part of the firmware or the packages): its script count.js (from gc.zgo.at) counts visits, and the installer
+sends one anonymous event per finished install. No cookies, no personal data; off while `GC_CODE` in
+`web/sim/counter.js` is empty, and never on a local copy.
+
+## Contributions
+
+Contributions are welcome under GPL-3.0-only. By submitting one, you agree that it may be
+combined with the Felucca Assets under the section 7 permission above.
+
+## Trademarks
+
+"Felucca" and "Hügelton Instruments" are names of Hügelton Instruments.
+
+"M-VAVE" and "FM-1" are trademarks of their respective owners. Felucca is independent
+firmware that runs on FM-1 hardware. It is not affiliated with, endorsed by or supported
+by those owners.
+
+## Radio
+
+Felucca never enables the Bluetooth / Wi-Fi radio of the hardware.
+
+The screen's pixel fonts (`assets/fonts/md_font.txt`) and the VU logo (`cv_vu`, `firmware/src/gfx.c`) are drawn by
+hand for this fork, in the style of a classic 1-bit drum-machine LCD (no third-party material is included): GPL-3.0-only,
+2026 DEADACTIVE.

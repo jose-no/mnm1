@@ -1,0 +1,539 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Drum machine fork: 2026 DEADACTIVE
+// The FM-1 simulator page: draws the panel (two layouts: the device's landscape, a stacked portrait for phones),
+// turns pointer and keyboard input into messages for the worklet (worklet.js runs the firmware), paints the
+// frames it sends back, and keeps the flash it writes in IndexedDB (store.js).
+import { BTN, ENC, KEYS, HeldSet, keyEvent, keyHint, contextMenuLatches } from './controls.js?v=6832e34897';
+import { FlashStore, openFlashDb } from './store.js?v=6832e34897';
+import { needsResume, playbackSession } from './audio.js?v=6832e34897';
+import { parseReel } from './reel.js?v=6832e34897';
+import { installCount, loadPageCounter } from './counter.js?v=6832e34897';
+import { ditherBackground, initGlitch } from './dither.js?v=6832e34897';
+import { LAYOUTS, DECO_CLASS, blend, heroPose, outline } from './layout.js?v=6832e34897';
+
+// ---- the panel's elements (built once, placed per layout)
+const device = document.getElementById('device');
+const fit = document.getElementById('fit');
+const note = document.getElementById('note');
+const els = { deco: {}, ctl: {}, enc: {}, lbl: {}, power: document.getElementById('power-on') };
+const lcd = document.createElement('canvas');
+lcd.width = lcd.height = 240;
+lcd.className = 'lcd';
+lcd.setAttribute('aria-label', 'screen');
+const lcdCtx = lcd.getContext('2d');
+lcdCtx.fillStyle = '#000';
+lcdCtx.fillRect(0, 0, 240, 240);
+
+function place(el, [x, y, w, h]) {
+  el.style.left = `${x}px`; el.style.top = `${y}px`; el.style.width = `${w}px`; el.style.height = `${h}px`;
+}
+
+const DEPTH = 14 * 3.2;                            // the body's depth (design px): walls stood on its outline
+let walls = null;
+function build() {
+  walls = document.createElement('div');           // the edge: strips around the rounded outline, DEPTH deep, shaded
+  walls.className = 'walls';                       // by which way they face (light from above)
+  for (const st of outline(LAYOUTS.landscape.W, LAYOUTS.landscape.H, 44, 6)) {
+    const w = document.createElement('div'), dx = st.x1 - st.x0, dy = st.y1 - st.y0, ang = Math.atan2(dy, dx);
+    const up = -Math.cos(ang);                     // the outward normal's upward part: 1 top edge .. -1 bottom edge
+    const c = Math.round(66 + 14 * up);
+    w.style.cssText = `width:${Math.hypot(dx, dy) + 0.8}px;height:${DEPTH}px;`
+      + `transform:translate(${st.x0}px,${st.y0}px) rotateZ(${ang}rad) rotateX(-90deg);`
+      + `background:linear-gradient(rgb(${c},${c + 4},${c + 9}),rgb(${c - 30},${c - 28},${c - 25}))`;
+    walls.append(w);
+  }
+  device.append(walls);
+  for (const name of Object.keys(DECO_CLASS)) {
+    const d = document.createElement('div');
+    d.className = DECO_CLASS[name];
+    device.append(d);
+    els.deco[name] = d;
+  }
+  device.append(lcd);
+  BTN.forEach((b, id) => {
+    const el = document.createElement('div');
+    el.className = 'btn';
+    el.dataset.ctl = `btn:${id}`;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', b.label);
+    if (b.tip) el.title = `${b.label}: ${b.tip}`;
+    el.innerHTML = b.label === 'PLAY' ? '<span class="two">PLAY<br>STOP</span>' : `<span>${b.label}</span>`;
+    addHint(el, `btn:${id}`);
+    device.append(el);
+    els.ctl[`btn:${id}`] = el;
+  });
+  KEYS.forEach(k => {
+    const el = document.createElement('div');
+    el.className = `key${k.black ? ' black' : ''}`;
+    el.dataset.ctl = `key:${k.n}`;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', k.name);
+    el.innerHTML = '<span class="stripe"></span>';
+    addHint(el, `key:${k.n}`);
+    device.append(el);
+    els.ctl[`key:${k.n}`] = el;
+  });
+  [...ENC.map((e, i) => [String(i), e.label, e.tip]), ['master', 'MASTER', 'the volume']].forEach(([id, label, tip]) => {
+    const el = document.createElement('div');
+    el.className = `enc${id === 'master' ? ' master' : ''}`;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'slider');
+    el.setAttribute('aria-label', label);
+    if (tip) el.title = `${label}: ${tip}`;
+    el.innerHTML = '<span class="skirt"></span><span class="cap"></span>';
+    device.append(el);
+    els.enc[id] = el;
+    const l = document.createElement('div');
+    l.className = 'lbl';
+    l.textContent = label;
+    device.append(l);
+    els.lbl[id] = l;
+  });
+  const glare = document.createElement('div');           // the shine: a fixed stripe moved by transform (no repaint)
+  glare.className = 'glare';
+  glare.innerHTML = '<span class="glare-band"></span>';
+  device.append(glare);
+  els.glare = glare.firstChild;
+}
+function addHint(el, ctl) {
+  if (!keyHint[ctl]) return;
+  const h = document.createElement('span');
+  h.className = 'hint';
+  h.textContent = keyHint[ctl];
+  el.append(h);
+}
+
+// geometry: phones show the FM-1's own landscape form while it flies in, then morph into the portrait simulator
+let phone = false, availW = 1000, availH = 600, morphNow = -1, powerAt = null, helpOpen = false;
+const HELP_W = 320 + 40;                           // Controls beside the device (wide screens): its width and a gap
+function fitScale(L) { return Math.max(0.2, Math.min(availW / L.W, availH / L.H, 1.2)); }
+function relayout() {
+  phone = window.innerWidth < 700 && window.innerHeight > window.innerWidth;
+  const beside = helpOpen && window.innerWidth >= 900;
+  availW = Math.min(document.documentElement.clientWidth - 32 - (beside ? HELP_W : 0), 1000);
+  availH = window.innerHeight - 96 - 118 - 8;       // the hero scene's padding: nav and the power switch above, the bar below
+  geometry(phone ? Math.max(0, morphNow) : 0, true);
+}
+function geometry(morph, force) {                  // place every part for this morph (0 landscape .. 1 portrait)
+  if (!force && morph === morphNow) return;
+  morphNow = morph;
+  const G = blend(LAYOUTS.landscape, phone ? LAYOUTS.portrait : LAYOUTS.landscape, morph);
+  for (const [name, d] of Object.entries(G.deco)) {
+    place(els.deco[name], d.box);
+    els.deco[name].style.opacity = d.opacity;
+  }
+  place(lcd, G.lcd);
+  powerAt = G.power;                                // where the FM-1 has its switch: the page's switch points there
+  for (const [ctl, b] of Object.entries(G.ctl)) place(els.ctl[ctl], b);
+  for (const [id, b] of Object.entries(G.enc)) {
+    place(els.enc[id], b);
+    place(els.lbl[id], [b[0] - 30, b[1] - 20, b[2] + 60, 14]);
+  }
+  const scale = fitScale(G);                        // fits at every step of the morph
+  if (walls) walls.hidden = morph > 0;              // the edge fits the FM-1's own outline; the phone layout lies flat
+  device.style.width = `${G.W}px`;
+  device.style.height = `${G.H}px`;
+  device.style.setProperty('--scale', scale);
+  fit.style.width = `${G.W * scale}px`;
+  fit.style.height = `${G.H * scale}px`;
+}
+
+// ---- input -> worklet
+let node = null;
+const held = new HeldSet();
+const pending = [];
+function send(m) { if (node) node.port.postMessage(m); else pending.push(m); }
+function ctlMsg(ctl, down) {
+  const [kind, id] = ctl.split(':');
+  return { t: kind, id: Number(id), down };
+}
+function press(ctl, src) {
+  if (held.press(ctl, src)) { send(ctlMsg(ctl, true)); els.ctl[ctl]?.classList.add('down'); }
+}
+function release(ctl, src) {
+  if (held.release(ctl, src)) { send(ctlMsg(ctl, false)); els.ctl[ctl]?.classList.remove('down'); }
+  if (src === 'latch') els.ctl[ctl]?.classList.remove('latched');
+}
+function releaseAll() {
+  for (const ctl of held.releaseAll()) {
+    send(ctlMsg(ctl, false));
+    els.ctl[ctl]?.classList.remove('down', 'latched');
+  }
+  send({ t: 'release' });
+}
+function toggleLatch(ctl) {
+  if (held.holds(ctl, 'latch')) release(ctl, 'latch');
+  else { press(ctl, 'latch'); els.ctl[ctl].classList.add('latched'); }
+}
+
+function bindControls() {
+  let lastPointerType;
+  device.addEventListener('contextmenu', e => {          // right-click a button: hold it (combinations)
+    const el = e.target.closest('[data-ctl]');
+    e.preventDefault();
+    if (el && el.classList.contains('btn') && contextMenuLatches(lastPointerType)) toggleLatch(el.dataset.ctl);
+  });
+  device.addEventListener('pointerdown', e => {
+    const el = e.target.closest('[data-ctl]');
+    lastPointerType = e.pointerType;
+    if (!el || e.button !== 0) return;
+    const ctl = el.dataset.ctl, src = `p${e.pointerId}`;
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    if (held.holds(ctl, 'latch')) { release(ctl, 'latch'); return; }   // a tap lets a held button go
+    press(ctl, src);
+    if (el.classList.contains('btn') && e.pointerType !== 'mouse') {
+      const timer = setTimeout(() => { if (held.holds(ctl, src)) toggleLatch(ctl); }, 600);
+      el.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
+    }
+  });
+  const up = e => {
+    const el = e.target.closest?.('[data-ctl]');
+    if (el) release(el.dataset.ctl, `p${e.pointerId}`);
+  };
+  device.addEventListener('pointerup', up);
+  device.addEventListener('pointercancel', up);
+  device.addEventListener('lostpointercapture', up);
+
+  for (const [id, el] of Object.entries(els.enc)) bindEncoder(id, el);
+
+  window.addEventListener('keydown', e => {
+    if (!arrived || e.target.closest?.('.help, .confirm, #power-on')) return;
+    if ((e.code === 'ArrowUp' || e.code === 'ArrowDown') && hovered) {
+      e.preventDefault();
+      turn(hovered, e.code === 'ArrowUp' ? 1 : -1);
+      return;
+    }
+    const k = keyEvent(e);
+    if (k) { e.preventDefault(); press(k.ctl, 'kbd'); }
+  });
+  window.addEventListener('keyup', e => {
+    const k = keyEvent(e);
+    if (k) { e.preventDefault(); release(k.ctl, 'kbd'); }
+  });
+  window.addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); else wake(); });
+  device.addEventListener('pointerdown', wake, true);
+  window.addEventListener('keydown', wake, true);
+}
+
+// encoders: 12 px of drag = one detent, up = clockwise; MASTER is a pot (0..1023 over 270 degrees)
+let hovered = null, masterValue = 800;
+const angle = { };
+function turn(id, steps) {
+  if (id === 'master') {
+    masterValue = Math.max(0, Math.min(1023, masterValue + steps * 32));
+    showMaster();
+    send({ t: 'master', value: masterValue });
+    return;
+  }
+  spin(id, steps);
+  send({ t: 'enc', id: Number(id), steps });
+}
+function spin(id, steps) {                         // the cap only (the reel turns knobs too)
+  angle[id] = (angle[id] ?? 0) + steps * 15;
+  els.enc[id].style.setProperty('--turn', `${angle[id]}deg`);
+}
+function showMaster() { els.enc.master.style.setProperty('--turn', `${-135 + masterValue / 1023 * 270}deg`); }
+function bindEncoder(id, el) {
+  let acc = 0, lastY = 0;
+  el.addEventListener('pointerenter', () => { hovered = id; });
+  el.addEventListener('pointerleave', () => { if (hovered === id) hovered = null; });
+  el.addEventListener('focus', () => { hovered = id; });
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    lastY = e.clientY;
+    acc = 0;
+  });
+  el.addEventListener('pointermove', e => {
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    const scale = parseFloat(getComputedStyle(device).getPropertyValue('--scale')) || 1;
+    acc += (lastY - e.clientY) / scale;
+    lastY = e.clientY;
+    const px = id === 'master' ? 4 : 12, steps = Math.trunc(acc / px);
+    if (steps) { acc -= steps * px; turn(id, id === 'master' ? steps / 8 : steps); }
+  });
+  let wheel = 0;
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    wheel -= e.deltaY;
+    const steps = Math.trunc(wheel / 40);
+    if (steps) { wheel -= steps * 40; turn(id, steps); }
+  }, { passive: false });
+}
+
+// ---- frames from the worklet
+let frame = null;
+const img = lcdCtx.createImageData(240, 240);
+const px = new Uint32Array(img.data.buffer);
+function rgb565(fb, out) {                         // the LCD's RGB565 -> canvas RGBA
+  for (let i = 0; i < fb.length; i++) {
+    const c = fb[i];
+    const r = (((c >> 11) & 31) * 527 + 23) >> 6, g = (((c >> 5) & 63) * 259 + 33) >> 6, b = ((c & 31) * 527 + 23) >> 6;
+    out[i] = 0xff000000 | (b << 16) | (g << 8) | r;
+  }
+}
+function paint(now) {
+  reelTick(now);
+  if (frame) {
+    const { fb, leds, keyLeds } = frame;
+    frame = null;
+    rgb565(fb, px);
+    lcdCtx.putImageData(img, 0, 0);
+    for (let b = 0; b < 14; b++) els.ctl[`btn:${b}`].classList.toggle('lit', ((leds >>> b) & 1) === 1);
+    for (let n = 0; n < 27; n++) els.ctl[`key:${n}`].classList.toggle('lit', ((keyLeds >>> n) & 1) === 1);
+  }
+  requestAnimationFrame(paint);
+}
+
+// ---- flash in IndexedDB (store.js), the audio clock (audio.js)
+const store = new FlashStore(openFlashDb, msg => { note.textContent = msg; });
+let ctx = null, poweredOff = false;
+function wake() {                                 // a tap or a key brings a stopped context back (not one switched off)
+  if (!ctx || poweredOff || !needsResume(ctx.state)) return;
+  ctx.resume().catch(() => {});
+}
+
+// ---- power on
+const wasmBytes = fetch('fm1sim.wasm?v=6832e34897').then(r => {
+  if (!r.ok) throw new Error(`fm1sim.wasm: HTTP ${r.status}`);
+  return r.arrayBuffer();
+});
+function setSwitch(on) {
+  els.power.setAttribute('aria-checked', String(on));
+  els.power.classList.toggle('on', on);
+  device.classList.toggle('powered-off', !on && !!node);
+}
+async function powerSwitch() {                     // the first flip starts the firmware; later ones pause / resume
+  if (!node) return powerOn();
+  poweredOff = !poweredOff;
+  setSwitch(!poweredOff);
+  if (poweredOff) { releaseAll(); await ctx.suspend(); }
+  else await ctx.resume();
+}
+async function powerOn() {
+  const btn = els.power, pnote = document.getElementById('power-note');
+  btn.disabled = true;
+  btn.classList.remove('ready');
+  setSwitch(true);
+  pnote.textContent = 'Starting…';
+  try {
+    if (!window.AudioWorkletNode) throw new Error('This browser has no AudioWorklet. Use a current Chrome, Firefox or Safari.');
+    playbackSession(navigator);
+    ctx = new AudioContext({ sampleRate: 44100, latencyHint: 'interactive' });
+    const resumed = ctx.resume();                         // inside the tap: browsers allow sound from here on
+    await ctx.audioWorklet.addModule('worklet.js?v=6832e34897');
+    const [wasm, sectors] = await Promise.all([wasmBytes, store.load()]);
+    node = new AudioWorkletNode(ctx, 'fm1', { numberOfInputs: 0, outputChannelCount: [2], processorOptions: { wasm, sectors } });
+    node.port.onmessage = e => {
+      const m = e.data;
+      if (m.t === 'frame') frame = m;
+      else if (m.t === 'flash') store.put(m.sectors);
+      else if (m.t === 'error') note.textContent = `The firmware failed to start: ${m.message}`;
+    };
+    node.connect(ctx.destination);
+    await resumed;
+    send({ t: 'master', value: masterValue });
+    for (const m of pending.splice(0)) node.port.postMessage(m);
+    if (ctx.sampleRate !== 44100) note.textContent = `Audio runs at ${ctx.sampleRate} Hz here, not 44100 Hz: pitch and tempo are off.`;
+    ctx.addEventListener('statechange', () => {
+      if (needsResume(ctx.state) && !document.hidden && !poweredOff) note.textContent = 'Sound stopped. Tap the panel to start it again.';
+      else if (ctx.state === 'running' && note.textContent.startsWith('Sound stopped')) note.textContent = '';
+    });
+    pnote.hidden = true;
+    btn.disabled = false;
+  } catch (err) {
+    btn.disabled = false;
+    setSwitch(false);
+    pnote.textContent = err.message || String(err);
+  }
+}
+
+// ---- page controls
+function bindPage() {
+  const toggle = document.getElementById('help-toggle'), help = document.getElementById('help');
+  toggle.addEventListener('click', () => {
+    const open = help.hidden;
+    help.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    device.classList.toggle('show-hints', open);
+    helpOpen = open;                                // beside the device on wide screens: it moves left, refitted
+    stage.classList.add('easing');
+    stage.classList.toggle('help-open', open);
+    relayout();
+    const t0 = performance.now();
+    const follow = now => {                         // the power switch follows the device while it moves
+      if (arrived) placePower();
+      if (now - t0 < 450) requestAnimationFrame(follow);
+      else stage.classList.remove('easing');
+    };
+    requestAnimationFrame(follow);
+  });
+  const confirm = document.getElementById('reset-confirm');
+  document.getElementById('reset').addEventListener('click', () => { confirm.hidden = !confirm.hidden; });
+  document.getElementById('reset-no').addEventListener('click', () => { confirm.hidden = true; });
+  document.addEventListener('pointerdown', e => {   // the pop-over closes on a click elsewhere, or Esc
+    if (!confirm.hidden && !e.target.closest('#reset-confirm, #reset')) confirm.hidden = true;
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') confirm.hidden = true; });
+  for (const b of document.querySelectorAll('.bar-btn, #power-on'))   // a mouse click leaves no focus behind,
+    b.addEventListener('mousedown', e => e.preventDefault());         // so the next Space plays, not this button
+  document.getElementById('reset-yes').addEventListener('click', async () => {
+    await store.clear();
+    location.reload();
+  });
+  els.power.addEventListener('click', powerSwitch);
+  els.power.disabled = false;
+  els.power.classList.add('ready');                 // nudges toward on until the first flip
+  document.getElementById('power-note').textContent = 'Turn on the power switch above the FM-1 to start the sound.';
+}
+
+// ---- the reel: recorded pages (tests/sim_record.c) on the screen, LEDs and knobs until the firmware is switched on
+let reel = null, reelPos = -1, reelT0 = 0;
+const reelFb = new Uint16Array(240 * 240);
+if (window.DecompressionStream)
+  fetch('reel.bin.gz?v=6832e34897')
+    .then(r => r.ok ? new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer() : Promise.reject())
+    .then(b => { reel = parseReel(b); reelT0 = performance.now(); })
+    .catch(() => { /* no reel: the screen stays dark until Switch on */ });
+function reelTick(now) {
+  if (!reel || node) return;
+  const target = Math.floor((now - reelT0) / 1000 * reel.fps) % reel.frames;
+  if (target === reelPos) return;
+  if (target < reelPos) reelPos = -1;               // looped: frame 0 is a whole screen
+  let f;
+  while (reelPos < target) {
+    f = reel.apply(++reelPos, reelFb);
+    for (let k = 0; k < 7; k++) if (f.enc[k]) spin(String(k), f.enc[k]);
+  }
+  frame = { fb: reelFb, leds: f.leds, keyLeds: f.keyLeds };
+}
+
+// ---- the hero: the scroll through #hero moves p 0 .. 1 (layout.js heroPose: far back, tilted and blurred ..
+// the simulator)
+const hero = document.getElementById('hero'), stage = document.getElementById('stage');
+const tilt = document.getElementById('tilt'), scene = document.getElementById('scene');
+const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+let arrived = false, heroQueued = false, lastFilter = '';
+function heroFrame() {
+  heroQueued = false;
+  const r = hero.getBoundingClientRect(), track = r.height - window.innerHeight;
+  const p = still.matches || track <= 0 ? 1 : Math.min(1, Math.max(0, -r.top / track));
+  const q = heroPose(p, phone);
+  tilt.style.transform = q.transform;
+  const b = Math.round(q.blur * 2) / 2;              // half-pixel steps: the filter changes ~18 times, not every frame
+  const filter = b > 0 ? `blur(${b}px)` : 'none';   // no filter at all once sharp
+  if (filter !== lastFilter) { scene.style.filter = filter; lastFilter = filter; }
+  geometry(phone ? q.morph : 0, false);
+  stage.style.setProperty('--dim', q.dim);
+  stage.style.setProperty('--copy', q.copy.toFixed(3));
+  stage.style.setProperty('--copy-events', q.copy > 0.5 ? 'auto' : 'none');
+  stage.style.setProperty('--shadow', q.shadow);
+  els.glare.parentNode.style.opacity = q.glare;
+  if (q.glare > 0) els.glare.style.transform = `translate3d(${-60 + q.sweep * 220}%, 0, 0) rotate(18deg)`;
+  if (q.arrived) placePower();
+  if (q.arrived !== arrived) {
+    arrived = q.arrived;
+    stage.style.setProperty('--arrived', arrived ? 1 : 0);
+    stage.style.setProperty('--arrived-events', arrived ? 'auto' : 'none');
+    device.classList.toggle('waiting', !arrived);
+    if (!arrived) releaseAll();                     // nothing stays held while it flies away
+  }
+}
+// the power switch is page UI: above the device, a leader line down to the mark where the FM-1 has its switch
+const powerUi = document.getElementById('power-ui'), powerLead = document.getElementById('power-lead');
+const powerLabel = document.getElementById('power-label');
+function placePower() {
+  const st = stage.getBoundingClientRect(), fr = fit.getBoundingClientRect();
+  const k = fr.width / parseFloat(device.style.width);                         // the device's scale on screen
+  const sx = fr.left + (powerAt[0] + powerAt[2] / 2) * k - st.left, sy = fr.top - st.top;   // the spot on its top edge
+  const tw = els.power.offsetWidth, th = els.power.offsetHeight, lw = powerLabel.offsetWidth;
+  const tx = sx - tw / 2;                                                     // straight above the spot
+  const right = tx + tw + 10 + lw <= st.width - 16;                            // the label right of it if it fits
+  const ty = Math.max(56, sy - 34 - th / 2), my = ty + th / 2;
+  els.power.style.transform = `translate(${tx}px, ${ty}px)`;
+  powerLabel.style.transform = `translate(${right ? tx + tw + 10 : tx - 10 - lw}px, ${my - powerLabel.offsetHeight / 2}px)`;
+  Object.assign(powerLead.style, {                  // a vertical line from the edge up to the switch's centre (it ends
+    left: `${sx}px`, top: `${my}px`, height: `${Math.max(0, sy - my)}px` });   // under the switch, which is opaque)
+}
+function queueHero() { if (!heroQueued) { heroQueued = true; requestAnimationFrame(heroFrame); } }
+
+// ---- a small FM-1 from the layout table (the install diagram)
+function buildMini(host) {                         // a small FM-1 from the layout table, scaled to its host
+  const parts = {};
+  if (!host) return parts;
+  const L = LAYOUTS.landscape, inner = document.createElement('div');
+  inner.className = 'mini';
+  const part = (cls, b, key) => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.style.cssText = `left:${b[0]}px;top:${b[1]}px;width:${b[2]}px;height:${b[3]}px`;
+    inner.append(d);
+    if (key) parts[key] = d;
+  };
+  for (const [name, b] of Object.entries(L.deco)) part(`m-${name}`, b);
+  part('m-lcd', L.lcd);
+  for (const [k, b] of Object.entries(L.ctl)) part(k.startsWith('key') ? 'm-key' : 'm-btn', b, k);
+  for (const [id, b] of Object.entries(L.enc)) part('m-enc', b, id === 'master' ? 'MASTER' : ENC[id].label);
+  host.append(inner);
+  const fitMini = () => { inner.style.transform = `scale(${host.clientWidth / L.W})`; };
+  new ResizeObserver(fitMini).observe(host);
+  fitMini();
+  return parts;
+}
+
+// ---- install: the firmware this site ships and what is new in it (version.json, written by the build)
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+  'November', 'December'];
+function plainNote(n) {                            // the changelog's line for players: no upstream credits or baselines
+  let t = n.text.replace(/\s*\((?:upstream|adapted)[^()]*(?:\([^()]*\)[^()]*)*\)/gi, '')
+    .replace(/\s*Frozen baseline[^.]*\./gi, '');
+  if (t.startsWith(n.title)) t = t.slice(n.title.length).replace(/^[\s:,]+/, '');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+loadPageCounter();                                  // visits (count.js), on the published site only
+// the hero's install count (counter.js: GoatCounter's public count; off, slow or failed: nothing shows)
+installCount().then(n => {
+  const el = document.getElementById('install-count');
+  if (n == null || !el) return;
+  const b = document.createElement('b');
+  b.textContent = n.toLocaleString('en');
+  el.replaceChildren('Installed ', b, n === 1 ? ' time' : ' times');
+  el.hidden = false;
+});
+fetch('version.json?v=6832e34897').then(r => r.ok ? r.json() : Promise.reject()).then(v => {
+  const [y, m, d] = v.date.split('-').map(Number);
+  const newer = v.since.length ? ` and ${v.since.length} newer change${v.since.length > 1 ? 's' : ''}` : '';
+  document.getElementById('fw-version').textContent =
+    `Version ${v.version}${newer}, built ${d} ${MONTHS[m - 1]} ${y} from commit ${v.commit}`;
+  const ul = document.getElementById('whats-new');
+  for (const n of [...v.since, ...v.release.notes]) {
+    const li = document.createElement('li'), span = document.createElement('span'), b = document.createElement('b');
+    b.textContent = n.title;
+    span.append(b, ' ', plainNote(n));                // clamped to three lines inside the item's padding
+    li.append(span);
+    ul.append(li);
+  }
+}).catch(() => { document.querySelector('.whats-new')?.remove(); });
+build();
+relayout();
+buildMini(document.getElementById('install-mini'));
+device.classList.add('waiting');
+heroFrame();
+window.addEventListener('scroll', queueHero, { passive: true });
+window.addEventListener('resize', queueHero);
+still.addEventListener?.('change', queueHero);
+showMaster();
+bindControls();
+bindPage();
+window.addEventListener('resize', relayout);
+document.fonts?.ready.then(relayout);
+requestAnimationFrame(paint);
+// the look (dither.js): a dithered glow behind the device, a dithered fade into the footer, headings that glitch
+ditherBackground(document.getElementById('stage'), (x, y) => {
+  const dx = (x - 0.5) / 0.55, dy = (y - 0.42) / 0.5;
+  return Math.max(0, 1 - Math.hypot(dx, dy)) * 1.15;
+}, '#000000', '#282828');
+ditherBackground(document.getElementById('foot-band'), (x, y) => 1 - Math.abs(2 * y - 1), '#000000', '#505050');
+initGlitch();
