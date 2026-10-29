@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Builds the installable FM-1 package (build/felucca.fwsc) on a Linux x86-64 runner, where JieLi's toolchain runs
-# natively (BUILDING.md), runs the GEN host test first, and publishes the package as a workflow artifact and a
-# pre-release named after the commit.
+# Builds the installable FM-1 package on a Linux x86-64 runner, where JieLi's toolchain runs natively (BUILDING.md),
+# after the GEN host test; then the web simulator (tools/build_sim.sh, emscripten in Docker) and the site around the
+# package (web/make_site.py: the simulator page, the web installer, the editor). Publishes the package as a workflow
+# artifact and a pre-release named after the commit, and the site to the gh-pages branch (GitHub Pages).
 name: build-firmware
 on:
   push:
@@ -19,6 +20,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - name: Python packages
         run: pip install Pillow
       - name: GEN host test
@@ -36,8 +40,10 @@ jobs:
               https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
           git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set cpu/wl82/tools
           ls -l "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
+      - name: Web simulator
+        run: tools/build_sim.sh
       - name: Build
-        run: DRUM_PACKAGE=1 DRUM_SITE=0 ./build.sh     # writes build/felucca-UNTESTED.fwsc (no web site)
+        run: DRUM_PACKAGE=1 ./build.sh     # build/felucca-UNTESTED.fwsc and the site in build/site
       - name: Name the package
         id: pkg
         run: |
@@ -64,3 +70,13 @@ jobs:
             "build/${{ steps.pkg.outputs.name }}" "build/${{ steps.pkg.outputs.name }}.sha256" \
             --prerelease --target "$GITHUB_SHA" --title "MNM-1 + GEN (${{ steps.pkg.outputs.tag }})" \
             --notes "Untested on hardware. MNM-1 with GEN (ported from Mutable Dreams by Kid Bunka / Christoph Link). Install with the MNM-1 web installer (choose this .fwsc file) or tools/fm1_install.py. Back to stock: M-VAVE's M-UPGRADE."
+      - name: Site to gh-pages
+        run: |
+          touch build/site/.nojekyll
+          cd build/site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Site for ${{ steps.pkg.outputs.tag }} (${GITHUB_SHA})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
